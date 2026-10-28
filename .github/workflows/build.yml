@@ -27,7 +27,7 @@ jobs:
         run: |
           flutter create --org com.example --project-name callnotes app
           cd app
-          flutter pub add sqflite path permission_handler
+          flutter pub add sqflite path permission_handler:^11.3.1
 
       - name: Copy app files
         run: cp -r files/. app/
