@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'clients_page.dart';
+import 'invoices_page.dart';
 
 void main() => runApp(const MyApp());
 
@@ -39,7 +40,7 @@ class _ShellState extends State<Shell> {
         index: _i,
         children: const [
           ClientsPage(),
-          Center(child: Text('تبويب الفواتير - جاي في المرحلة التانية')),
+          InvoicesPage(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
