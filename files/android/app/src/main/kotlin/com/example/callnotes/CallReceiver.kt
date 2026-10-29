@@ -23,6 +23,7 @@ import android.widget.TextView
 class CallReceiver : BroadcastReceiver() {
 
     private data class Row(val name: String, val date: String, val notes: String)
+    private data class Info(val rows: List<Row>, val rating: String, val warn: String)
 
     companion object {
         private var overlay: View? = null
@@ -39,19 +40,30 @@ class CallReceiver : BroadcastReceiver() {
                 val number = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER)
                 if (number.isNullOrBlank()) return
 
-                val rows = lookup(app, number)
-                if (rows.isEmpty()) return
+                val info = lookup(app, number)
+                if (info.rows.isEmpty()) return
 
-                val last = rows.first()
-                val title = "📞 ${last.name}"
+                val last = info.rows.first()
+                val prefix = when (info.rating) {
+                    "good" -> "⭐ "
+                    "bad" -> "⚠️ "
+                    else -> "📞 "
+                }
+                val color = when (info.rating) {
+                    "good" -> "#E61B5E20"
+                    "bad" -> "#E6B71C1C"
+                    else -> "#E60F766E"
+                }
+                val title = prefix + last.name
                 val body = buildString {
-                    append(if (rows.size == 1) "حجز معاك مرة واحدة" else "حجز معاك ${rows.size} مرات")
+                    append(if (info.rows.size == 1) "حجز معاك مرة واحدة" else "حجز معاك ${info.rows.size} مرات")
                     append(" - آخر حجز: ${fmt(last.date)}")
+                    if (info.warn.isNotBlank()) append("\n⚠️ ${info.warn}")
                     if (last.notes.isNotBlank()) append("\n${last.notes}")
                 }
 
                 showNotification(app, title, body)
-                showOverlay(app, "$title\n$body")
+                showOverlay(app, "$title\n$body", Color.parseColor(color))
             }
             // الاتصال اتردّ عليه أو اتقفل
             else -> removeOverlay(app)
@@ -59,15 +71,18 @@ class CallReceiver : BroadcastReceiver() {
     }
 
     // ------------------------------------------------------------ DB
-    private fun lookup(ctx: Context, number: String): List<Row> {
+    private fun lookup(ctx: Context, number: String): Info {
+        val empty = Info(emptyList(), "none", "")
         val digits = number.filter { it.isDigit() }
-        if (digits.length < 7) return emptyList()
+        if (digits.length < 7) return empty
         val key = digits.takeLast(9)
 
         val file = ctx.getDatabasePath("bookings.db")
-        if (!file.exists()) return emptyList()
+        if (!file.exists()) return empty
 
         val result = mutableListOf<Row>()
+        var rating = "none"
+        var warn = ""
         try {
             val db = SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READONLY)
             db.rawQuery(
@@ -78,10 +93,22 @@ class CallReceiver : BroadcastReceiver() {
                     result.add(Row(c.getString(0) ?: "", c.getString(1) ?: "", c.getString(2) ?: ""))
                 }
             }
+            try {
+                db.rawQuery(
+                    "SELECT rating, warn FROM clients WHERE phone_key = ?",
+                    arrayOf(key)
+                ).use { c ->
+                    if (c.moveToFirst()) {
+                        rating = c.getString(0) ?: "none"
+                        warn = c.getString(1) ?: ""
+                    }
+                }
+            } catch (e: Exception) {
+            }
             db.close()
         } catch (e: Exception) {
         }
-        return result
+        return Info(result, rating, warn)
     }
 
     private fun fmt(iso: String): String {
@@ -114,7 +141,7 @@ class CallReceiver : BroadcastReceiver() {
 
     // ------------------------------------------------------------ Overlay
     @Suppress("DEPRECATION")
-    private fun showOverlay(ctx: Context, text: String) {
+    private fun showOverlay(ctx: Context, text: String, bg: Int) {
         if (!Settings.canDrawOverlays(ctx)) return
         removeOverlay(ctx)
 
@@ -126,7 +153,7 @@ class CallReceiver : BroadcastReceiver() {
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             setPadding(48, 36, 48, 36)
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#E60F766E"))
+                setColor(bg)
                 cornerRadius = 36f
             }
         }
