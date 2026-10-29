@@ -1,4 +1,4 @@
-# SHORT VERSION - 44 lines
+# VERSION 2 - 54 lines
 name: Build APK
 
 on:
@@ -31,6 +31,16 @@ jobs:
 
       - name: Copy app files
         run: cp -r files/. app/
+
+      - name: Use fixed signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            mkdir -p ~/.android
+            echo "$KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
+            keytool -list -keystore ~/.android/debug.keystore -storepass android > /dev/null
+          fi
 
       - name: Build APK
         working-directory: app
