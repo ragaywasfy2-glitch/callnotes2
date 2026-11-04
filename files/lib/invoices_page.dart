@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'calculator_page.dart';
 import 'data.dart';
 import 'invoice_editor.dart';
 import 'invoice_utils.dart';
@@ -13,6 +14,7 @@ class InvoicesPage extends StatefulWidget {
 
 class _InvoicesPageState extends State<InvoicesPage> {
   int _year = DateTime.now().year;
+  int _section = 0; // 0 = الفواتير, 1 = الحاسبة
   Map<int, Stat> _stats = {};
 
   @override
@@ -63,52 +65,81 @@ class _InvoicesPageState extends State<InvoicesPage> {
     );
   }
 
+  Widget _monthsGrid(ColorScheme cs, DateTime now) {
+    final total = _stats.values.fold<double>(0, (a, b) => a + b.sum);
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_right),
+                onPressed: () {
+                  setState(() => _year--);
+                  _load();
+                },
+              ),
+              Text('$_year',
+                  style: const TextStyle(
+                      fontSize: 22, fontWeight: FontWeight.bold)),
+              IconButton(
+                icon: const Icon(Icons.chevron_left),
+                onPressed: () {
+                  setState(() => _year++);
+                  _load();
+                },
+              ),
+            ],
+          ),
+        ),
+        Text('إجمالي السنة: ${money(total)}'),
+        Expanded(
+          child: GridView.count(
+            crossAxisCount: 3,
+            padding: const EdgeInsets.all(12),
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            childAspectRatio: 1.05,
+            children: [
+              for (var m = 1; m <= 12; m++) _monthCard(m, cs, now),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final now = DateTime.now();
-    final total = _stats.values.fold<double>(0, (a, b) => a + b.sum);
     return Scaffold(
       appBar: AppBar(title: const Text('الفواتير')),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.chevron_right),
-                  onPressed: () {
-                    setState(() => _year--);
-                    _load();
-                  },
-                ),
-                Text('$_year',
-                    style: const TextStyle(
-                        fontSize: 22, fontWeight: FontWeight.bold)),
-                IconButton(
-                  icon: const Icon(Icons.chevron_left),
-                  onPressed: () {
-                    setState(() => _year++);
-                    _load();
-                  },
-                ),
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+            child: SegmentedButton<int>(
+              segments: const [
+                ButtonSegment(
+                    value: 0,
+                    label: Text('الفواتير'),
+                    icon: Icon(Icons.receipt_long)),
+                ButtonSegment(
+                    value: 1,
+                    label: Text('الحاسبة'),
+                    icon: Icon(Icons.calculate)),
               ],
+              selected: {_section},
+              onSelectionChanged: (s) => setState(() => _section = s.first),
             ),
           ),
-          Text('إجمالي السنة: ${money(total)}'),
           Expanded(
-            child: GridView.count(
-              crossAxisCount: 3,
-              padding: const EdgeInsets.all(12),
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
-              childAspectRatio: 1.05,
-              children: [
-                for (var m = 1; m <= 12; m++) _monthCard(m, cs, now),
-              ],
-            ),
+            child: _section == 0
+                ? _monthsGrid(cs, now)
+                : const CalculatorTab(),
           ),
         ],
       ),
