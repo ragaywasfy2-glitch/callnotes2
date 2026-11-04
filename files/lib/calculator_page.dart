@@ -16,7 +16,7 @@ class _CalculatorTabState extends State<CalculatorTab> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
           child: SegmentedButton<int>(
             segments: const [
               ButtonSegment(value: 0, label: Text('حاسبة')),
@@ -98,25 +98,26 @@ class _CalculatorState extends State<_Calculator> {
   void _square() => setState(() => _expr = '($_expr)^2');
   void _inverse() => setState(() => _expr = '1/($_expr)');
 
-  Widget _btn(String label,
-      {VoidCallback? onTap, Color? bg, Color? fg, double fontSize = 22}) {
+  Widget _btn(String label, {VoidCallback? onTap, Color? bg, Color? fg}) {
     return Expanded(
       child: Padding(
-        padding: const EdgeInsets.all(4),
-        child: AspectRatio(
-          aspectRatio: 1.3,
-          child: Material(
-            color: bg ?? Theme.of(context).colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(14),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(14),
-              onTap: onTap ?? () => _tap(label),
-              child: Center(
-                child: Text(label,
-                    style: TextStyle(
-                        fontSize: fontSize,
-                        fontWeight: FontWeight.w600,
-                        color: fg)),
+        padding: const EdgeInsets.all(3),
+        child: Material(
+          color: bg ?? Theme.of(context).colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: onTap ?? () => _tap(label),
+            child: Center(
+              child: FittedBox(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(label,
+                      style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w600,
+                          color: fg)),
+                ),
               ),
             ),
           ),
@@ -125,13 +126,15 @@ class _CalculatorState extends State<_Calculator> {
     );
   }
 
+  Widget _row(List<Widget> children) => Expanded(child: Row(children: children));
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
           child: Row(
             children: [
               FilterChip(
@@ -151,8 +154,8 @@ class _CalculatorState extends State<_Calculator> {
         ),
         Container(
           width: double.infinity,
-          margin: const EdgeInsets.all(12),
-          padding: const EdgeInsets.all(16),
+          margin: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: cs.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(16),
@@ -161,13 +164,13 @@ class _CalculatorState extends State<_Calculator> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(_expr.isEmpty ? '0' : _expr,
-                  style: const TextStyle(fontSize: 20),
+                  style: const TextStyle(fontSize: 18),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               Text(_result,
                   style: TextStyle(
-                      fontSize: 32,
+                      fontSize: 28,
                       fontWeight: FontWeight.bold,
                       color: _err ? Colors.red : cs.primary)),
             ],
@@ -175,30 +178,30 @@ class _CalculatorState extends State<_Calculator> {
         ),
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
             child: Column(
               children: [
                 if (_sci) ...[
-                  Row(children: [
+                  _row([
                     _btn('sin', onTap: () => _tap('sin(')),
                     _btn('cos', onTap: () => _tap('cos(')),
                     _btn('tan', onTap: () => _tap('tan(')),
                     _btn('√', onTap: () => _tap('sqrt(')),
                   ]),
-                  Row(children: [
+                  _row([
                     _btn('log', onTap: () => _tap('log(')),
                     _btn('ln', onTap: () => _tap('ln(')),
                     _btn('π', onTap: () => _tap('π')),
                     _btn('e', onTap: () => _tap('e')),
                   ]),
-                  Row(children: [
+                  _row([
                     _btn('x²', onTap: _square),
                     _btn('1/x', onTap: _inverse),
                     _btn('^', onTap: () => _tap('^')),
                     _btn('%', onTap: () => _tap('%')),
                   ]),
                 ],
-                Row(children: [
+                _row([
                   _btn('C',
                       onTap: _clear,
                       bg: Colors.red.shade100,
@@ -207,25 +210,25 @@ class _CalculatorState extends State<_Calculator> {
                   _btn('(', onTap: () => _tap('(')),
                   _btn(')', onTap: () => _tap(')')),
                 ]),
-                Row(children: [
+                _row([
                   _btn('7'),
                   _btn('8'),
                   _btn('9'),
                   _btn('÷', onTap: () => _tap('/'), fg: cs.primary),
                 ]),
-                Row(children: [
+                _row([
                   _btn('4'),
                   _btn('5'),
                   _btn('6'),
                   _btn('×', onTap: () => _tap('*'), fg: cs.primary),
                 ]),
-                Row(children: [
+                _row([
                   _btn('1'),
                   _btn('2'),
                   _btn('3'),
                   _btn('−', onTap: () => _tap('-'), fg: cs.primary),
                 ]),
-                Row(children: [
+                _row([
                   _btn('0'),
                   _btn('.'),
                   _btn('=', onTap: _eval, bg: cs.primary, fg: Colors.white),
