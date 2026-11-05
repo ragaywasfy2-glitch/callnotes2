@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'bookings_page.dart';
 import 'clients_page.dart';
 import 'invoices_page.dart';
 
@@ -40,6 +41,7 @@ class _ShellState extends State<Shell> {
         index: _i,
         children: const [
           ClientsPage(),
+          OrdersPage(),
           InvoicesPage(),
         ],
       ),
@@ -48,6 +50,8 @@ class _ShellState extends State<Shell> {
         onDestinationSelected: (v) => setState(() => _i = v),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.people), label: 'العملاء'),
+          NavigationDestination(
+              icon: Icon(Icons.shopping_cart_outlined), label: 'الحجوزات'),
           NavigationDestination(
               icon: Icon(Icons.receipt_long), label: 'الفواتير'),
         ],
