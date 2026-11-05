@@ -127,12 +127,26 @@ class Db {
         note TEXT,
         photos TEXT
       )''');
+    await d.execute('''
+      CREATE TABLE IF NOT EXISTS orders(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        year INTEGER,
+        month INTEGER,
+        day INTEGER,
+        type TEXT,
+        title TEXT,
+        quantity REAL,
+        unit TEXT,
+        office_price REAL,
+        public_price REAL,
+        note TEXT
+      )''');
   }
 
   static Future<Database> get instance async {
     _db ??= await openDatabase(
       p.join(await getDatabasesPath(), 'bookings.db'),
-      version: 2,
+      version: 3,
       onCreate: (d, v) async {
         await d.execute(_bookingsSql);
         await _extra(d);
@@ -142,8 +156,9 @@ class Db {
           await d.execute('ALTER TABLE bookings ADD COLUMN follow_up TEXT');
           await d.execute(
               'ALTER TABLE bookings ADD COLUMN follow_done INTEGER DEFAULT 0');
-          await _extra(d);
         }
+        // _extra تستخدم IF NOT EXISTS فآمنة تتكرر مهما كانت النسخة القديمة
+        await _extra(d);
       },
     );
     return _db!;
@@ -196,10 +211,11 @@ class Db {
     final d = await instance;
     return jsonEncode({
       'app': 'callnotes',
-      'version': 1,
+      'version': 2,
       'bookings': await d.query('bookings'),
       'clients': await d.query('clients'),
       'invoices': await d.query('invoices'),
+      'orders': await d.query('orders'),
     });
   }
 
@@ -240,6 +256,20 @@ class Db {
       await d.insert('invoices', m);
       seenI.add(sig);
     }
+
+    final oldO = await d.query('orders');
+    String sigO(Map m) =>
+        '${m['year']}|${m['month']}|${m['day']}|${m['type']}|${m['title']}|${m['quantity']}|${m['office_price']}|${m['public_price']}';
+    final seenO = oldO.map(sigO).toSet();
+    for (final r in (data['orders'] as List? ?? [])) {
+      final m = Map<String, Object?>.from(r as Map);
+      final sig = sigO(m);
+      if (seenO.contains(sig)) continue;
+      m.remove('id');
+      await d.insert('orders', m);
+      seenO.add(sig);
+    }
+
     return added;
   }
 }
