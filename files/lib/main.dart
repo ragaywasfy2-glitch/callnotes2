@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'bookings_page.dart';
 import 'clients_page.dart';
+import 'inventory_page.dart';
 import 'invoices_page.dart';
 
 void main() => runApp(const MyApp());
@@ -43,6 +44,7 @@ class _ShellState extends State<Shell> {
           ClientsPage(),
           OrdersPage(),
           InvoicesPage(),
+          InventoryPage(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -54,6 +56,8 @@ class _ShellState extends State<Shell> {
               icon: Icon(Icons.shopping_cart_outlined), label: 'الحجوزات'),
           NavigationDestination(
               icon: Icon(Icons.receipt_long), label: 'الفواتير'),
+          NavigationDestination(
+              icon: Icon(Icons.inventory_2_outlined), label: 'الجرد'),
         ],
       ),
     );
