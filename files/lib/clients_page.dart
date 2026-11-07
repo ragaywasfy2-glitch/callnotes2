@@ -1,5 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'data.dart';
 
@@ -64,43 +67,39 @@ class _ClientsPageState extends State<ClientsPage> with WidgetsBindingObserver {
     _checkPerms();
   }
 
-  // ------------------------------------------------------------ نسخ احتياطي
+  // ------------------------------------------------------------ نسخ احتياطي كملف
   Future<void> _menu(String v) async {
     if (v == 'export') {
-      final text = await Db.exportJson();
-      await Clipboard.setData(ClipboardData(text: text));
-      _snack('اتنسخت النسخة الاحتياطية. الصقها في ملاحظة أو رسالة لنفسك');
+      try {
+        final text = await Db.exportJson();
+        final bytes = Uint8List.fromList(utf8.encode(text));
+        final name = 'callnotes_backup_${isoOf(DateTime.now())}.json';
+        final path = await FilePicker.platform.saveFile(
+          dialogTitle: 'احفظ النسخة الاحتياطية',
+          fileName: name,
+          bytes: bytes,
+        );
+        if (path != null) {
+          _snack('اتحفظت النسخة الاحتياطية');
+        }
+      } catch (e) {
+        _snack('مقدرتش أحفظ الملف');
+      }
       return;
     }
-    final clip = await Clipboard.getData('text/plain');
-    final c = TextEditingController(text: clip?.text ?? '');
-    if (!mounted) return;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('استرجاع نسخة احتياطية'),
-        content: TextField(
-          controller: c,
-          maxLines: 6,
-          decoration: const InputDecoration(hintText: 'الصق النسخة هنا'),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('إلغاء')),
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('استرجاع')),
-        ],
-      ),
-    );
-    if (ok != true) return;
+
     try {
-      final n = await Db.importJson(c.text.trim());
+      final picked = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+      );
+      if (picked == null || picked.files.single.path == null) return;
+      final content = await File(picked.files.single.path!).readAsString();
+      final n = await Db.importJson(content);
       _snack('اتضاف $n حجز جديد');
       _reload();
     } catch (e) {
-      _snack('النسخة دي مش صالحة');
+      _snack('الملف ده مش صالح');
     }
   }
 
@@ -369,8 +368,9 @@ class _ClientsPageState extends State<ClientsPage> with WidgetsBindingObserver {
             onSelected: _menu,
             itemBuilder: (_) => const [
               PopupMenuItem(
-                  value: 'export', child: Text('نسخ احتياطي (نسخ للحافظة)')),
-              PopupMenuItem(value: 'import', child: Text('استرجاع نسخة (لصق)')),
+                  value: 'export', child: Text('نسخ احتياطي (حفظ كملف)')),
+              PopupMenuItem(
+                  value: 'import', child: Text('استرجاع نسخة (اختيار ملف)')),
             ],
           ),
         ],
