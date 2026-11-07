@@ -141,12 +141,31 @@ class Db {
         public_price REAL,
         note TEXT
       )''');
+    await d.execute('''
+      CREATE TABLE IF NOT EXISTS inventory_items(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        category TEXT,
+        unit TEXT,
+        quantity REAL,
+        min_alert REAL,
+        price REAL,
+        note TEXT
+      )''');
+    await d.execute('''
+      CREATE TABLE IF NOT EXISTS inventory_moves(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        item_id INTEGER,
+        date TEXT,
+        delta REAL,
+        note TEXT
+      )''');
   }
 
   static Future<Database> get instance async {
     _db ??= await openDatabase(
       p.join(await getDatabasesPath(), 'bookings.db'),
-      version: 3,
+      version: 4,
       onCreate: (d, v) async {
         await d.execute(_bookingsSql);
         await _extra(d);
@@ -211,11 +230,13 @@ class Db {
     final d = await instance;
     return jsonEncode({
       'app': 'callnotes',
-      'version': 2,
+      'version': 3,
       'bookings': await d.query('bookings'),
       'clients': await d.query('clients'),
       'invoices': await d.query('invoices'),
       'orders': await d.query('orders'),
+      'inventory_items': await d.query('inventory_items'),
+      'inventory_moves': await d.query('inventory_moves'),
     });
   }
 
@@ -268,6 +289,47 @@ class Db {
       m.remove('id');
       await d.insert('orders', m);
       seenO.add(sig);
+    }
+
+    // أصناف الجرد وحركاتها: لازم نربط item_id الجديد الصح لأنه مفتاح مرتبط
+    final idMap = <int, int>{};
+    final oldItems = await d.query('inventory_items');
+    String sigItem(Map m) => '${m['name']}|${m['category']}|${m['unit']}';
+    final existingBySig = {
+      for (final r in oldItems) sigItem(r): r['id'] as int,
+    };
+    for (final r in (data['inventory_items'] as List? ?? [])) {
+      final m = Map<String, Object?>.from(r as Map);
+      final oldId = m['id'] as int?;
+      final sig = sigItem(m);
+      if (existingBySig.containsKey(sig)) {
+        if (oldId != null) idMap[oldId] = existingBySig[sig]!;
+        continue;
+      }
+      final newM = Map<String, Object?>.from(m)..remove('id');
+      final newId = await d.insert('inventory_items', newM);
+      if (oldId != null) idMap[oldId] = newId;
+    }
+
+    final oldMoves = await d.query('inventory_moves');
+    String sigMove(int itemId, Map m) =>
+        '$itemId|${m['date']}|${m['delta']}|${m['note']}';
+    final seenMoves =
+        oldMoves.map((r) => sigMove(r['item_id'] as int, r)).toSet();
+    for (final r in (data['inventory_moves'] as List? ?? [])) {
+      final m = Map<String, Object?>.from(r as Map);
+      final oldItemId = m['item_id'] as int?;
+      if (oldItemId == null || !idMap.containsKey(oldItemId)) continue;
+      final newItemId = idMap[oldItemId]!;
+      final sig = sigMove(newItemId, m);
+      if (seenMoves.contains(sig)) continue;
+      await d.insert('inventory_moves', {
+        'item_id': newItemId,
+        'date': m['date'],
+        'delta': m['delta'],
+        'note': m['note'],
+      });
+      seenMoves.add(sig);
     }
 
     return added;
