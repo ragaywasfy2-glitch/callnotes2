@@ -1,4 +1,4 @@
-# VERSION 6.2 - 62 lines
+# VERSION 8 - 65 lines
 name: Build APK
 
 on:
@@ -29,22 +29,33 @@ jobs:
           cd app
           flutter pub add sqflite path "permission_handler:^11.3.1" image_picker path_provider "file_picker:8.1.2"
 
-      - name: Raise compileSdk and targetSdk
+      - name: Raise compileSdk and targetSdk to 36
         working-directory: app
         run: |
+          # تعديل ملف المشروع الرئيسي ليصبح الإصدار 36
           FILE_KTS="android/app/build.gradle.kts"
           FILE_GRADLE="android/app/build.gradle"
           
           if [ -f "$FILE_KTS" ]; then
-            sed -i 's/compileSdk = .*/compileSdk = 35/g' "$FILE_KTS"
-            sed -i 's/targetSdk = .*/targetSdk = 35/g' "$FILE_KTS"
-            sed -i 's/flutter\.compileSdkVersion/35/g' "$FILE_KTS"
-            grep -i compileSdk "$FILE_KTS"
+            sed -i 's/compileSdk = .*/compileSdk = 36/g' "$FILE_KTS"
+            sed -i 's/targetSdk = .*/targetSdk = 36/g' "$FILE_KTS"
           elif [ -f "$FILE_GRADLE" ]; then
-            sed -i 's/compileSdkVersion .*/compileSdkVersion 35/g' "$FILE_GRADLE"
-            sed -i 's/targetSdkVersion .*/targetSdkVersion 35/g' "$FILE_GRADLE"
-            sed -i 's/flutter\.compileSdkVersion/35/g' "$FILE_GRADLE"
-            grep -i compileSdkVersion "$FILE_GRADLE"
+            sed -i 's/compileSdkVersion .*/compileSdkVersion 36/g' "$FILE_GRADLE"
+            sed -i 's/targetSdkVersion .*/targetSdkVersion 36/g' "$FILE_GRADLE"
+          fi
+
+          # رفع إعدادات الـ SDK لأي مكتبة في الـ pub cache تتطلب 34 أو 35 إلى 36
+          PUBCACHE_DIR="$HOME/.pub-cache/hosted/pub.dev"
+          if [ -d "$PUBCACHE_DIR" ]; then
+            find "$PUBCACHE_DIR" -type f -name "build.gradle" | while read -r f; do
+              if grep -q "compileSdkVersion" "$f" || grep -q "compileSdk" "$f"; then
+                sed -i 's/compileSdkVersion 34/compileSdkVersion 36/g' "$f"
+                sed -i 's/compileSdkVersion 35/compileSdkVersion 36/g' "$f"
+                sed -i 's/compileSdk = 34/compileSdk = 36/g' "$f"
+                sed -i 's/compileSdk = 35/compileSdk = 36/g' "$f"
+                sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 36/g' "$f"
+              fi
+            done
           fi
 
       - name: Copy app files
