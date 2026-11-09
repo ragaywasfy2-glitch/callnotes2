@@ -1,4 +1,4 @@
-# VERSION 5 - 54 lines
+# VERSION 6 - 62 lines
 name: Build APK
 
 on:
@@ -28,6 +28,16 @@ jobs:
           flutter create --org com.example --project-name callnotes app
           cd app
           flutter pub add sqflite path permission_handler:^11.3.1 image_picker path_provider file_picker:8.1.2
+
+      - name: Raise compileSdk
+        working-directory: app
+        run: |
+          FILE=android/app/build.gradle.kts
+          if [ ! -f "$FILE" ]; then FILE=android/app/build.gradle; fi
+          sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/' "$FILE"
+          sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 36/' "$FILE"
+          sed -i 's/flutter\.compileSdkVersion/36/g' "$FILE"
+          grep -i compileSdk "$FILE"
 
       - name: Copy app files
         run: cp -r files/. app/
